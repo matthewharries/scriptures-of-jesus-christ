@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* Manual dark mode driven by a `.dark` class on <html> (set by the theme toggle),
+   instead of relying solely on the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Reading controls write to these; the article scales/typesets from them. */
+  --reading-scale: 1;
+  --font-serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --reading-font: var(--font-serif);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* The reading column honors the chosen family and size scale. */
+.reading {
+  font-family: var(--reading-font);
+  font-size: calc(1.0625rem * var(--reading-scale));
+  line-height: 1.7;
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

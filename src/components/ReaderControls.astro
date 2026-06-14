@@ -1,0 +1,37 @@
+---
+// Reading preference controls. Behavior is wired up by the inline script in
+// Layout.astro (so it applies before paint and on every page).
+---
+<div class="flex items-center gap-1 sm:gap-2" role="group" aria-label="Reading settings">
+  <div class="flex items-center rounded-lg border border-stone-300 dark:border-stone-700 overflow-hidden">
+    <button
+      data-reader="font-down"
+      class="px-2 py-1.5 text-sm hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+      aria-label="Decrease font size"
+      title="Decrease font size"
+    >A<span class="text-xs">−</span></button>
+    <button
+      data-reader="font-up"
+      class="px-2 py-1.5 text-base hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors border-l border-stone-300 dark:border-stone-700"
+      aria-label="Increase font size"
+      title="Increase font size"
+    >A<span class="text-xs">+</span></button>
+  </div>
+
+  <button
+    data-reader="font-family"
+    class="px-2.5 py-1.5 text-sm rounded-lg border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors min-w-[3.25rem]"
+    aria-label="Toggle font family"
+    title="Toggle serif / sans-serif"
+  ><span data-reader-fontlabel>Serif</span></button>
+
+  <button
+    data-reader="theme"
+    class="px-2.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+    aria-label="Toggle dark mode"
+    title="Toggle light / dark"
+  >
+    <svg data-reader-sun class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+    <svg data-reader-moon class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+  </button>
+</div>

@@ -1,0 +1,69 @@
+---
+import Layout from '../components/Layout.astro';
+import { href, shortTitle } from '../lib/url';
+import type { TopicsData } from '../lib/types';
+import data from '../data/topics.json';
+
+const { topics } = data as TopicsData;
+const totalRefs = topics.reduce((n, t) => n + t.refCount, 0);
+---
+
+<Layout title="Scriptures of Jesus Christ — Topical Guide">
+  <section class="mb-8">
+    <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Scriptures of Jesus Christ</h1>
+    <p class="mt-3 max-w-2xl text-stone-600 dark:text-stone-300">
+      Every scripture the Topical Guide gathers under <em>Jesus Christ</em> — {topics.length} topics,
+      {totalRefs.toLocaleString()} passages — laid out for reading. Pick a topic to read the verses in full,
+      with a link back to the full chapter for context.
+    </p>
+  </section>
+
+  <div class="mb-6">
+    <input
+      id="topic-search"
+      type="search"
+      placeholder="Filter topics…"
+      autocomplete="off"
+      aria-label="Filter topics"
+      class="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base shadow-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 dark:border-stone-700 dark:bg-stone-900"
+    />
+    <p id="topic-empty" class="mt-3 hidden text-sm text-stone-500 dark:text-stone-400">No topics match that filter.</p>
+  </div>
+
+  <ul id="topic-list" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    {topics.map((t) => (
+      <li data-title={t.title.toLowerCase()}>
+        <a
+          href={href(`topics/${t.slug}/`)}
+          class="flex h-full items-baseline justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 transition hover:border-amber-400 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-600"
+        >
+          <span class="font-medium leading-snug">{shortTitle(t.title)}</span>
+          {t.seeAlso ? (
+            <span class="shrink-0 text-xs text-stone-400 dark:text-stone-500">see {shortTitle(t.seeAlso.title)}</span>
+          ) : (
+            <span class="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-xs tabular-nums text-stone-500 dark:bg-stone-800 dark:text-stone-400">{t.refCount}</span>
+          )}
+        </a>
+      </li>
+    ))}
+  </ul>
+
+  <script is:inline>
+    (() => {
+      const input = document.getElementById('topic-search');
+      const items = Array.from(document.querySelectorAll('#topic-list > li'));
+      const empty = document.getElementById('topic-empty');
+      if (!input) return;
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        let visible = 0;
+        for (const li of items) {
+          const match = li.getAttribute('data-title').includes(q);
+          li.style.display = match ? '' : 'none';
+          if (match) visible++;
+        }
+        empty.classList.toggle('hidden', visible !== 0);
+      });
+    })();
+  </script>
+</Layout>

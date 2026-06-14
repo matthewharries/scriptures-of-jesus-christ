@@ -1,0 +1,13 @@
+# build output
+dist/
+# astro generated types
+.astro/
+# dependencies
+node_modules/
+# pipeline cache (raw downloads + API responses)
+.cache/
+# logs / env / os
+*.log
+.DS_Store
+.env
+.env.production

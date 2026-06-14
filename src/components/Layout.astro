@@ -1,0 +1,103 @@
+---
+import '../styles/global.css';
+import ReaderControls from './ReaderControls.astro';
+import { href } from '../lib/url';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = 'Read every scripture the Topical Guide gathers under Jesus Christ.' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" class="scroll-pt-20">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" href={href('favicon.svg')} type="image/svg+xml" />
+    <title>{title}</title>
+    {/* Apply saved reading preferences before paint to avoid a flash. */}
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+        const theme = ls('jcs-theme', '');
+        const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+        if (theme === 'dark' || (theme === '' && prefersDark)) root.classList.add('dark');
+        const scale = ls('jcs-scale', '1');
+        root.style.setProperty('--reading-scale', scale);
+        const font = ls('jcs-font', 'serif');
+        root.style.setProperty('--reading-font', font === 'sans' ? 'var(--font-sans)' : 'var(--font-serif)');
+      })();
+    </script>
+  </head>
+  <body class="min-h-screen bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100 antialiased">
+    <header class="sticky top-0 z-10 border-b border-stone-200/80 bg-stone-50/85 backdrop-blur dark:border-stone-800/80 dark:bg-stone-950/85">
+      <div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+        <a href={href()} class="group flex items-center gap-2 font-semibold tracking-tight">
+          <span class="text-amber-700 dark:text-amber-500">✦</span>
+          <span class="group-hover:underline">Scriptures of Jesus Christ</span>
+        </a>
+        <ReaderControls />
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-3xl px-4 py-8 sm:py-10">
+      <slot />
+    </main>
+
+    <footer class="mx-auto max-w-3xl px-4 pb-12 pt-6 text-sm text-stone-500 dark:text-stone-400">
+      <p class="border-t border-stone-200 pt-6 dark:border-stone-800">
+        References from the
+        <a class="underline hover:text-stone-700 dark:hover:text-stone-200" href="https://www.churchofjesuschrist.org/study/scriptures/tg?lang=eng">Topical Guide</a>.
+        Scripture text from the
+        <a class="underline hover:text-stone-700 dark:hover:text-stone-200" href="https://github.com/bcbooks/scriptures-json">bcbooks/scriptures-json</a>
+        project. Each passage links back to
+        <a class="underline hover:text-stone-700 dark:hover:text-stone-200" href="https://www.churchofjesuschrist.org">churchofjesuschrist.org</a>
+        for full context.
+      </p>
+    </footer>
+
+    {/* Reading controls behavior (shared across pages). */}
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const set = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+        const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+
+        const SCALES = [0.9, 1, 1.15, 1.3, 1.5];
+        const syncFontLabel = () => {
+          const isSans = get('jcs-font', 'serif') === 'sans';
+          document.querySelectorAll('[data-reader-fontlabel]').forEach((el) => {
+            el.textContent = isSans ? 'Sans' : 'Serif';
+          });
+        };
+        syncFontLabel();
+
+        const onClick = (action) => {
+          if (action === 'theme') {
+            const dark = root.classList.toggle('dark');
+            set('jcs-theme', dark ? 'dark' : 'light');
+          } else if (action === 'font-family') {
+            const next = get('jcs-font', 'serif') === 'sans' ? 'serif' : 'sans';
+            set('jcs-font', next);
+            root.style.setProperty('--reading-font', next === 'sans' ? 'var(--font-sans)' : 'var(--font-serif)');
+            syncFontLabel();
+          } else if (action === 'font-up' || action === 'font-down') {
+            const cur = parseFloat(get('jcs-scale', '1'));
+            let i = SCALES.indexOf(SCALES.reduce((a, b) => (Math.abs(b - cur) < Math.abs(a - cur) ? b : a), SCALES[1]));
+            i = Math.max(0, Math.min(SCALES.length - 1, i + (action === 'font-up' ? 1 : -1)));
+            set('jcs-scale', String(SCALES[i]));
+            root.style.setProperty('--reading-scale', String(SCALES[i]));
+          }
+        };
+
+        document.querySelectorAll('[data-reader]').forEach((btn) => {
+          btn.addEventListener('click', () => onClick(btn.getAttribute('data-reader')));
+        });
+      })();
+    </script>
+  </body>
+</html>

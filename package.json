@@ -1,0 +1,25 @@
+{
+  "name": "jesus-christ-scriptures",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Browse and read all the LDS Topical Guide scriptures on Jesus Christ.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "build-data": "tsx scripts/build-data.ts",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.7.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@tailwindcss/vite": "^4.1.4",
+    "@types/node": "^22.19.21",
+    "node-html-parser": "^7.0.1",
+    "tailwindcss": "^4.1.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
