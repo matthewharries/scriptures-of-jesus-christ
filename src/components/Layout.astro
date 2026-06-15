@@ -30,8 +30,8 @@ const { title, description = 'Read every scripture the Topical Guide gathers und
         if (theme === 'dark' || (theme === '' && prefersDark)) root.classList.add('dark');
         const scale = ls('jcs-scale', '1');
         root.style.setProperty('--reading-scale', scale);
-        const font = ls('jcs-font', 'serif');
-        root.style.setProperty('--reading-font', font === 'sans' ? 'var(--font-sans)' : 'var(--font-serif)');
+        const font = ls('jcs-font', 'sans');
+        root.style.setProperty('--reading-font', font === 'serif' ? 'var(--font-serif)' : 'var(--font-sans)');
       })();
     </script>
   </head>
@@ -81,7 +81,7 @@ const { title, description = 'Read every scripture the Topical Guide gathers und
 
         const SCALES = [0.9, 1, 1.15, 1.3, 1.5];
         const syncFontLabel = () => {
-          const isSans = get('jcs-font', 'serif') === 'sans';
+          const isSans = get('jcs-font', 'sans') !== 'serif';
           document.querySelectorAll('[data-reader-fontlabel]').forEach((el) => {
             el.textContent = isSans ? 'Sans' : 'Serif';
           });
@@ -93,7 +93,7 @@ const { title, description = 'Read every scripture the Topical Guide gathers und
             const dark = root.classList.toggle('dark');
             set('jcs-theme', dark ? 'dark' : 'light');
           } else if (action === 'font-family') {
-            const next = get('jcs-font', 'serif') === 'sans' ? 'serif' : 'sans';
+            const next = get('jcs-font', 'sans') === 'serif' ? 'sans' : 'serif';
             set('jcs-font', next);
             root.style.setProperty('--reading-font', next === 'sans' ? 'var(--font-sans)' : 'var(--font-serif)');
             syncFontLabel();

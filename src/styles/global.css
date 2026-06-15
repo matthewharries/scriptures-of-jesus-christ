@@ -25,7 +25,7 @@
   --reading-scale: 1;
   --font-serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --reading-font: var(--font-serif);
+  --reading-font: var(--font-sans);
 }
 
 html {
