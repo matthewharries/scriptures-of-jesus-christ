@@ -38,15 +38,22 @@ only need to re-run `build-data` when you want to refresh the scripture data.
 
 ## Deploying to GitHub Pages
 
-This site is served from a subpath, so set the path in **`astro.config.mjs`**:
+This is deployed as a **standalone project repo** served under the existing
+`matthewharries.dev` apex domain at `https://matthewharries.dev/scriptures-of-jesus-christ/`.
+Because the user site (`matthewharries.github.io`) has that custom domain, GitHub
+automatically serves every other project repo at `matthewharries.dev/<repo-name>/` — the
+main site is never touched and never references this one.
 
-- `site`: your Pages origin, e.g. `https://<username>.github.io`
-- `base`: the repo subpath. Defaults to `/jesus-christ-scriptures`. If your repo has a
-  different name (or you serve it elsewhere), change `base` to match.
+Steps:
 
-Then in the repo: **Settings → Pages → Build and deployment → Source = GitHub Actions**.
-The workflow in `.github/workflows/deploy.yml` builds and publishes on every push to
-`main`.
+1. **Create the GitHub repo named `scriptures-of-jesus-christ`** (the repo name *is* the URL
+   path, and must match `base` in `astro.config.mjs`). Push this project to it.
+2. In that repo: **Settings → Pages → Build and deployment → Source = GitHub Actions**.
+   `.github/workflows/deploy.yml` builds and publishes on every push to `main`.
+
+Do **not** add a `CNAME` file to this repo — the apex domain belongs to the user site, and
+project repos inherit it automatically. The pages also send `noindex, nofollow` so the site
+stays unlisted (out of search engines) even though it is technically public.
 
 ## Reading features
 
