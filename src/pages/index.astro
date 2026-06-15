@@ -14,9 +14,32 @@ const totalRefs = topics.reduce((n, t) => n + t.refCount, 0);
     <p class="mt-3 max-w-2xl text-stone-600 dark:text-stone-300">
       Every scripture the Topical Guide gathers under <em>Jesus Christ</em> — {topics.length} topics,
       {totalRefs.toLocaleString()} passages — laid out for reading. Pick a topic to read the verses in full,
-      with a link back to the full chapter for context.
+      each linking straight to the passage on churchofjesuschrist.org for context.
     </p>
   </section>
+
+  <a
+    id="resume-card"
+    hidden
+    class="mb-6 flex items-center justify-between gap-3 rounded-xl border border-accent-300 bg-accent-50 px-4 py-3 transition hover:bg-accent-100 dark:border-accent-800 dark:bg-accent-950/50 dark:hover:bg-accent-900/60"
+  >
+    <span class="flex items-center gap-3">
+      <svg class="h-5 w-5 shrink-0 text-accent-700 dark:text-accent-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      <span class="leading-tight">
+        <span class="block text-xs uppercase tracking-wide text-accent-700/80 dark:text-accent-400/80">Resume reading</span>
+        <span class="block font-medium" data-resume-title></span>
+      </span>
+    </span>
+    <button
+      id="resume-clear"
+      type="button"
+      aria-label="Clear bookmark"
+      title="Clear bookmark"
+      class="shrink-0 rounded-md p-1 text-accent-700/70 hover:bg-accent-200/60 hover:text-accent-900 dark:text-accent-300/70 dark:hover:bg-accent-800/60 dark:hover:text-accent-100"
+    >
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+    </button>
+  </a>
 
   <div class="mb-6">
     <input
@@ -25,7 +48,7 @@ const totalRefs = topics.reduce((n, t) => n + t.refCount, 0);
       placeholder="Filter topics…"
       autocomplete="off"
       aria-label="Filter topics"
-      class="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base shadow-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 dark:border-stone-700 dark:bg-stone-900"
+      class="w-full rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-base shadow-sm outline-none transition focus:border-accent-500 focus:ring-2 focus:ring-accent-500/30 dark:border-stone-700 dark:bg-stone-900"
     />
     <p id="topic-empty" class="mt-3 hidden text-sm text-stone-500 dark:text-stone-400">No topics match that filter.</p>
   </div>
@@ -35,7 +58,7 @@ const totalRefs = topics.reduce((n, t) => n + t.refCount, 0);
       <li data-title={t.title.toLowerCase()}>
         <a
           href={href(`topics/${t.slug}/`)}
-          class="flex h-full items-baseline justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 transition hover:border-amber-400 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-amber-600"
+          class="flex h-full items-baseline justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 transition hover:border-accent-400 hover:shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:hover:border-accent-600"
         >
           <span class="font-medium leading-snug">{shortTitle(t.title)}</span>
           {t.seeAlso ? (
@@ -47,6 +70,28 @@ const totalRefs = topics.reduce((n, t) => n + t.refCount, 0);
       </li>
     ))}
   </ul>
+
+  <script is:inline>
+    (() => {
+      const card = document.getElementById('resume-card');
+      const titleEl = card && card.querySelector('[data-resume-title]');
+      const clearBtn = document.getElementById('resume-clear');
+      let bm = null;
+      try { bm = JSON.parse(localStorage.getItem('jcs-bookmark') || 'null'); } catch {}
+      if (card && bm && bm.url) {
+        card.href = bm.url;
+        titleEl.textContent = bm.title + (bm.ref ? ' — ' + bm.ref : '');
+        card.hidden = false;
+      }
+      clearBtn && clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try { localStorage.removeItem('jcs-bookmark'); } catch {}
+        if (card) card.hidden = true;
+        window.dispatchEvent(new Event('jcs-bookmark-changed'));
+      });
+    })();
+  </script>
 
   <script is:inline>
     (() => {

@@ -13,7 +13,7 @@
 import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse } from 'node-html-parser';
+import { parse, NodeType, type HTMLElement, type Node } from 'node-html-parser';
 import { BOOK_NAMES, VOLUME_FILE, isVolume, type Volume } from './book-map.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,22 +31,31 @@ type ReferenceData = Record<string, Record<string, Record<string, string>>>;
 
 interface Verse {
   num: string;
+  // Verse text as safe HTML: the Topical Guide catchphrase fragments are wrapped
+  // in <em> and their emphasized key words in <strong>. null => text unavailable.
+  html: string | null;
+}
+interface VerseText {
+  num: string;
   text: string | null; // null => text unavailable in the reference editions
 }
-interface Group {
-  reference: string; // display label, e.g. "Genesis 1"
+// One Topical Guide reference: the cited verse(s) — with the catchphrase
+// italicized inline — and a link straight to those verses on the church site.
+interface Passage {
+  reference: string; // display label, e.g. "Ex. 15:2"
   volume: Volume;
   bookSlug: string;
   chapter: string;
-  churchUrl: string; // link back to the full chapter for context
+  churchUrl: string; // verse-anchored link
   verses: Verse[];
   chapterOnly: boolean; // reference cited a whole chapter / heading, no verse text
+  fromSeeAlso: boolean; // came from the "See also" footer (no catchphrase)
 }
 interface Topic {
   slug: string;
   title: string;
   refCount: number;
-  groups: Group[];
+  passages: Passage[];
   // Set for "See ..." redirect entries that have no references. `external` marks
   // targets outside this dataset (linked to churchofjesuschrist.org via `url`).
   seeAlso?: { slug: string; title: string; external?: boolean; url?: string };
@@ -179,7 +188,128 @@ function lookupVerse(
 
 const unmappedSlugs = new Set<string>();
 
-/** Parse one subtopic page into grouped, text-resolved references. */
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// A catchphrase word, flagged if it was emphasized (<span class="key-word">).
+interface PhraseWord {
+  w: string; // lowercased, for matching
+  key: boolean;
+}
+const WORD_RE = /[A-Za-z0-9'’]+/g;
+
+/**
+ * Split an entry's catchphrase into segments of word-tokens. The catchphrase
+ * precedes the first scripture reference and uses an ellipsis (… or ...) to mark
+ * where words were omitted, so each ellipsis starts a new segment. Emphasized
+ * words (<span class="key-word">) are flagged.
+ */
+function extractSegments(entry: HTMLElement): PhraseWord[][] {
+  const segments: PhraseWord[][] = [];
+  let current: PhraseWord[] = [];
+  const add = (text: string, key: boolean) => {
+    const parts = text.split(/…|\.\.\./);
+    parts.forEach((part, i) => {
+      if (i > 0) {
+        segments.push(current);
+        current = [];
+      }
+      for (const m of part.matchAll(WORD_RE)) current.push({ w: m[0].toLowerCase(), key });
+    });
+  };
+  for (const node of entry.childNodes as Node[]) {
+    const el = node as HTMLElement;
+    if (el.nodeType === NodeType.ELEMENT_NODE && el.classList?.contains('scripture-ref')) break;
+    if (node.nodeType === NodeType.TEXT_NODE) add(node.text, false);
+    else if (el.classList?.contains('key-word')) add(el.text, true);
+    else add(el.text ?? '', false);
+  }
+  segments.push(current);
+  return segments.filter((s) => s.length > 0);
+}
+
+interface BoldRange {
+  start: number;
+  end: number;
+}
+interface ItalicRange {
+  start: number;
+  end: number;
+  bolds: BoldRange[];
+}
+
+/** Render verse text with the given italic (catchphrase) / bold (key word) ranges. */
+function renderMarked(text: string, italics: ItalicRange[]): string {
+  if (italics.length === 0) return escapeHtml(text);
+  italics.sort((a, b) => a.start - b.start);
+  let out = '';
+  let cursor = 0;
+  for (const it of italics) {
+    out += escapeHtml(text.slice(cursor, it.start)) + '<em>';
+    let ic = it.start;
+    for (const b of it.bolds.sort((a, b) => a.start - b.start)) {
+      out += escapeHtml(text.slice(ic, b.start)) + '<strong>' + escapeHtml(text.slice(b.start, b.end)) + '</strong>';
+      ic = b.end;
+    }
+    out += escapeHtml(text.slice(ic, it.end)) + '</em>';
+    cursor = it.end;
+  }
+  return out + escapeHtml(text.slice(cursor));
+}
+
+/**
+ * Locate each catchphrase segment within the passage's verses (in order, allowing
+ * gaps for the ellipses) and return verse HTML with the matched fragments
+ * italicized and emphasized key words bolded. Unmatched segments are skipped.
+ */
+function markVerses(verses: VerseText[], segments: PhraseWord[][]): Verse[] {
+  const verseTokens = verses.map((v) =>
+    v.text
+      ? [...v.text.matchAll(WORD_RE)].map((m) => ({
+          lc: m[0].toLowerCase(),
+          start: m.index!,
+          end: m.index! + m[0].length,
+        }))
+      : [],
+  );
+  const italics: ItalicRange[][] = verses.map(() => []);
+
+  let pVi = 0;
+  let pTi = 0; // search pointer: start at verse pVi, token pTi
+  for (const seg of segments) {
+    const len = seg.length;
+    let placed = false;
+    for (let vi = pVi; vi < verses.length && !placed; vi++) {
+      const toks = verseTokens[vi];
+      for (let ti = vi === pVi ? pTi : 0; ti + len <= toks.length; ti++) {
+        let ok = true;
+        for (let k = 0; k < len; k++) {
+          if (toks[ti + k].lc !== seg[k].w) {
+            ok = false;
+            break;
+          }
+        }
+        if (!ok) continue;
+        const range: ItalicRange = { start: toks[ti].start, end: toks[ti + len - 1].end, bolds: [] };
+        for (let k = 0; k < len; k++) {
+          if (seg[k].key) range.bolds.push({ start: toks[ti + k].start, end: toks[ti + k].end });
+        }
+        italics[vi].push(range);
+        pVi = vi;
+        pTi = ti + len;
+        placed = true;
+        break;
+      }
+    }
+  }
+
+  return verses.map((v, vi) => ({
+    num: v.num,
+    html: v.text === null ? null : renderMarked(v.text, italics[vi]),
+  }));
+}
+
+/** Parse one subtopic page into per-reference, text-resolved passages. */
 function parseTopic(
   slug: string,
   title: string,
@@ -187,10 +317,26 @@ function parseTopic(
   refs: Record<Volume, ReferenceData>,
 ): Topic {
   const root = parse(body);
-  const groups: Group[] = [];
-  let refCount = 0;
+  const passages: Passage[] = [];
 
-  for (const a of root.querySelectorAll('a')) {
+  // Main references live in <p class="entry"> elements (catchphrase + ref links);
+  // the "See also" footer (<ul class="reference">) lists extra refs with no phrase.
+  // Cache each entry's catchphrase segments so multiple refs in one entry share them.
+  const segFor = new Map<HTMLElement, PhraseWord[][]>();
+  for (const entry of root.querySelectorAll('.entry')) {
+    segFor.set(entry, extractSegments(entry));
+  }
+  const closestEntry = (node: HTMLElement): HTMLElement | null => {
+    let p = node.parentNode as HTMLElement | null;
+    while (p && p.tagName) {
+      if (p.classList?.contains('entry')) return p;
+      p = p.parentNode as HTMLElement | null;
+    }
+    return null;
+  };
+
+  // Iterate in document order so main entries come first, "See also" refs last.
+  for (const a of root.querySelectorAll('a.scripture-ref')) {
     const href = (a.getAttribute('href') ?? '').replace(/&amp;/g, '&');
     const m = href.match(/\/study\/scriptures\/(ot|nt|bofm|dc-testament|pgp)\/([^/]+)\/([^/?#]+)/);
     if (!m) continue;
@@ -198,50 +344,39 @@ function parseTopic(
     if (!isVolume(volume)) continue;
     const bookSlug = m[2];
     const chapter = decodeURIComponent(m[3]);
-    const label = a.text.replace(/\s+/g, ' ').trim();
+    const reference = a.text.replace(/\s+/g, ' ').trim();
 
-    const bookName =
-      volume === 'dc-testament' ? 'Doctrine and Covenants' : BOOK_NAMES[volume][bookSlug];
-    if (!bookName) {
+    if (volume !== 'dc-testament' && !BOOK_NAMES[volume][bookSlug]) {
       unmappedSlugs.add(`${volume}/${bookSlug}`);
     }
 
-    let verseNums = versesFromLabel(label);
+    const entry = closestEntry(a);
+    let verseNums = versesFromLabel(reference);
     if (verseNums.length === 0) verseNums = versesFromHref(href);
-    const verses: Verse[] = verseNums.map((num) => ({
+    const versesText: VerseText[] = verseNums.map((num) => ({
       num,
       text: lookupVerse(refs, volume, bookSlug, chapter, num),
     }));
+    const segments = entry ? segFor.get(entry) ?? [] : [];
+    const verses = markVerses(versesText, segments);
 
-    const churchUrl = `${SITE}/study/scriptures/${volume}/${bookSlug}/${chapter}?lang=eng`;
-    const reference = `${bookName ?? bookSlug} ${chapter}`;
-    refCount++;
-
-    // Merge into the previous group if it's the same chapter (TG lists in order).
-    const prev = groups[groups.length - 1];
-    if (prev && prev.volume === volume && prev.bookSlug === bookSlug && prev.chapter === chapter) {
-      for (const v of verses) {
-        if (!prev.verses.some((e) => e.num === v.num)) prev.verses.push(v);
-      }
-      if (verses.length === 0) prev.chapterOnly = prev.verses.length === 0;
-    } else {
-      groups.push({
-        reference,
-        volume,
-        bookSlug,
-        chapter,
-        churchUrl,
-        verses,
-        chapterOnly: verses.length === 0,
-      });
-    }
+    passages.push({
+      reference,
+      volume,
+      bookSlug,
+      chapter,
+      churchUrl: `${SITE}${href}`, // verse-anchored href straight from the TG
+      verses,
+      chapterOnly: verses.length === 0,
+      fromSeeAlso: !entry,
+    });
   }
 
-  const topic: Topic = { slug, title, refCount, groups };
+  const topic: Topic = { slug, title, refCount: passages.length, passages };
 
   // Redirect-only entries (e.g. "Jesus Christ, Son of God. See Jesus Christ,
   // Divine Sonship.") have no references — capture the cross-reference target.
-  if (groups.length === 0) {
+  if (passages.length === 0) {
     for (const a of root.querySelectorAll('a')) {
       const href = a.getAttribute('href') ?? '';
       const m = href.match(/\/scriptures\/tg\/([a-z0-9-]+)/);
@@ -267,7 +402,7 @@ async function main() {
   for (const { slug, title } of subtopics) {
     const { body } = await fetchTgPage(slug);
     const topic = parseTopic(slug, title, body, refs);
-    console.log(`  ${title} — ${topic.refCount} refs in ${topic.groups.length} groups`);
+    console.log(`  ${title} — ${topic.refCount} passages`);
     topics.push(topic);
   }
 
@@ -294,11 +429,17 @@ async function main() {
   );
 
   const totalRefs = topics.reduce((n, t) => n + t.refCount, 0);
+  const mainRefs = topics.reduce((n, t) => n + t.passages.filter((p) => !p.fromSeeAlso).length, 0);
+  const withItalics = topics.reduce(
+    (n, t) => n + t.passages.filter((p) => p.verses.some((v) => v.html?.includes('<em>'))).length,
+    0,
+  );
   const missing = topics.reduce(
-    (n, t) => n + t.groups.reduce((m, g) => m + g.verses.filter((v) => v.text === null).length, 0),
+    (n, t) => n + t.passages.reduce((m, p) => m + p.verses.filter((v) => v.html === null).length, 0),
     0,
   );
   console.log(`\n✓ Wrote ${topics.length} topics, ${totalRefs} references to src/data/topics.json`);
+  console.log(`  catchphrase italicized inline in ${withItalics}/${mainRefs} main references`);
   if (missing) console.log(`  (${missing} cited verses had no text in the reference editions)`);
 }
 

@@ -4,6 +4,22 @@
    instead of relying solely on the OS preference. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Muted, dusty-blue accent (much lower chroma than Tailwind's default blue) so
+   the UI reads calm rather than vibrant. Used as `accent-*` utility classes. */
+@theme {
+  --color-accent-50: oklch(0.972 0.013 255);
+  --color-accent-100: oklch(0.940 0.024 255);
+  --color-accent-200: oklch(0.890 0.040 255);
+  --color-accent-300: oklch(0.820 0.056 255);
+  --color-accent-400: oklch(0.720 0.072 255);
+  --color-accent-500: oklch(0.620 0.082 255);
+  --color-accent-600: oklch(0.540 0.085 255);
+  --color-accent-700: oklch(0.470 0.078 255);
+  --color-accent-800: oklch(0.400 0.064 255);
+  --color-accent-900: oklch(0.345 0.050 255);
+  --color-accent-950: oklch(0.250 0.038 255);
+}
+
 :root {
   /* Reading controls write to these; the article scales/typesets from them. */
   --reading-scale: 1;
@@ -20,11 +36,19 @@ body {
   font-family: var(--font-sans);
 }
 
-/* The reading column honors the chosen family and size scale. */
+/* The reading column honors the chosen family and size scale. The Topical Guide
+   catchphrase is italicized inline within the verse text (<em>), with its key
+   word bolded in the normal text color (<strong>). */
 .reading {
   font-family: var(--reading-font);
   font-size: calc(1.0625rem * var(--reading-scale));
   line-height: 1.7;
+}
+.reading em {
+  font-style: italic;
+}
+.reading strong {
+  font-weight: 700;
 }
 
 /* Respect users who prefer reduced motion. */

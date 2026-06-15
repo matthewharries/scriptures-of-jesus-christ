@@ -4,14 +4,19 @@ import { href, shortTitle } from '../../lib/url';
 import type { TopicsData, Topic } from '../../lib/types';
 import data from '../../data/topics.json';
 
+type NavLink = { slug: string; title: string } | null;
+
 export function getStaticPaths() {
   const { topics } = data as TopicsData;
-  return topics.map((topic) => ({ params: { slug: topic.slug }, props: { topic } }));
+  const nav = (t?: Topic): NavLink => (t ? { slug: t.slug, title: t.title } : null);
+  return topics.map((topic, i) => ({
+    params: { slug: topic.slug },
+    props: { topic, prev: nav(topics[i - 1]), next: nav(topics[i + 1]) },
+  }));
 }
 
-const { topic } = Astro.props as { topic: Topic };
-const groupCount = topic.groups.length;
-const verseCount = topic.groups.reduce((n, g) => n + g.verses.length, 0);
+const { topic, prev, next } = Astro.props as { topic: Topic; prev: NavLink; next: NavLink };
+const verseCount = topic.passages.reduce((n, p) => n + p.verses.length, 0);
 ---
 
 <Layout title={`${topic.title} — Scriptures of Jesus Christ`}>
@@ -20,11 +25,11 @@ const verseCount = topic.groups.reduce((n, g) => n + g.verses.length, 0);
   </a>
 
   <header class="mt-3 mb-8 border-b border-stone-200 pb-6 dark:border-stone-800">
-    <p class="text-sm font-medium uppercase tracking-wide text-amber-700 dark:text-amber-500">Jesus Christ</p>
+    <p class="text-sm font-medium uppercase tracking-wide text-accent-700 dark:text-accent-400">Jesus Christ</p>
     <h1 class="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">{shortTitle(topic.title)}</h1>
     {!topic.seeAlso && (
       <p class="mt-2 text-sm text-stone-500 dark:text-stone-400">
-        {verseCount.toLocaleString()} verses across {groupCount} {groupCount === 1 ? 'passage' : 'passages'}
+        {verseCount.toLocaleString()} verses across {topic.refCount} {topic.refCount === 1 ? 'reference' : 'references'}
       </p>
     )}
   </header>
@@ -33,7 +38,7 @@ const verseCount = topic.groups.reduce((n, g) => n + g.verses.length, 0);
     <div class="rounded-xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
       <p class="text-stone-600 dark:text-stone-300">This entry points to another topic:</p>
       <a
-        class="mt-2 inline-flex items-center gap-1 text-lg font-semibold text-amber-700 hover:underline dark:text-amber-500"
+        class="mt-2 inline-flex items-center gap-1 text-lg font-semibold text-accent-700 hover:underline dark:text-accent-400"
         href={topic.seeAlso.external ? topic.seeAlso.url : href(`topics/${topic.seeAlso.slug}/`)}
         {...topic.seeAlso.external ? { target: '_blank', rel: 'noopener' } : {}}
       >
@@ -42,40 +47,128 @@ const verseCount = topic.groups.reduce((n, g) => n + g.verses.length, 0);
       </a>
     </div>
   ) : (
-    <div class="space-y-8">
-      {topic.groups.map((g) => (
-        <section>
-          <div class="mb-2 flex items-baseline justify-between gap-3">
-            <h2 class="text-lg font-semibold tracking-tight">{g.reference}</h2>
-            <a
-              href={g.churchUrl}
-              target="_blank"
-              rel="noopener"
-              class="shrink-0 text-sm text-amber-700 hover:underline dark:text-amber-500"
-            >Full chapter <span aria-hidden="true">↗</span></a>
-          </div>
-          {g.chapterOnly ? (
-            <p class="reading text-stone-500 dark:text-stone-400">
-              Cited as a whole chapter — <a class="underline" href={g.churchUrl} target="_blank" rel="noopener">read it on churchofjesuschrist.org</a>.
-            </p>
-          ) : (
-            <ol class="reading space-y-2">
-              {g.verses.map((v) => (
-                <li class="flex gap-2.5">
-                  <span class="mt-0.5 shrink-0 select-none text-xs font-semibold text-amber-700/80 tabular-nums dark:text-amber-500/80">{v.num}</span>
-                  <span>
-                    {v.text ?? (
+    <div id="passages" data-topic-title={shortTitle(topic.title)} class="space-y-7">
+      {topic.passages.map((p, i) => (
+        <>
+          {p.fromSeeAlso && (i === 0 || !topic.passages[i - 1].fromSeeAlso) && (
+            <h2 class="!mt-10 border-t border-stone-200 pt-6 text-sm font-semibold uppercase tracking-wide text-stone-500 dark:border-stone-800 dark:text-stone-400">
+              See also
+            </h2>
+          )}
+          <section id={`p-${i}`} data-ref={p.reference} class="scroll-mt-24">
+            <div class="mb-1.5 flex items-baseline justify-between gap-3">
+              <h3 class="font-semibold tracking-tight">
+                <a href={p.churchUrl} target="_blank" rel="noopener">{p.reference}</a>
+              </h3>
+              <button
+                data-bm
+                type="button"
+                aria-pressed="false"
+                aria-label="Bookmark this passage"
+                title="Bookmark this passage"
+                class="shrink-0 text-stone-400 transition-colors hover:text-accent-700 dark:hover:text-accent-400"
+              >
+                <svg data-bm-off class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                <svg data-bm-on class="hidden h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+              </button>
+            </div>
+            {p.chapterOnly ? (
+              <p class="reading text-stone-500 dark:text-stone-400">
+                Cited as a whole chapter — <a class="underline" href={p.churchUrl} target="_blank" rel="noopener">read it on churchofjesuschrist.org</a>.
+              </p>
+            ) : (
+              <ol class="reading space-y-2">
+                {p.verses.map((v) => (
+                  <li class="flex gap-2.5">
+                    <span class="mt-0.5 shrink-0 select-none text-xs font-semibold text-accent-700/80 tabular-nums dark:text-accent-400/80">{v.num}</span>
+                    {v.html ? (
+                      <span set:html={v.html} />
+                    ) : (
                       <em class="text-stone-500 dark:text-stone-400">
-                        (text unavailable — <a class="underline" href={g.churchUrl} target="_blank" rel="noopener">read on churchofjesuschrist.org</a>)
+                        (text unavailable — <a class="underline" href={p.churchUrl} target="_blank" rel="noopener">read on churchofjesuschrist.org</a>)
                       </em>
                     )}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </>
       ))}
     </div>
   )}
+
+  <nav class="mt-12 grid grid-cols-2 gap-3 border-t border-stone-200 pt-6 dark:border-stone-800">
+    {prev ? (
+      <a
+        href={href(`topics/${prev.slug}/`)}
+        rel="prev"
+        class="group rounded-xl border border-stone-200 px-4 py-3 transition hover:border-accent-400 dark:border-stone-800 dark:hover:border-accent-600"
+      >
+        <span class="block text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500"><span aria-hidden="true">←</span> Previous</span>
+        <span class="mt-0.5 block font-medium group-hover:underline">{shortTitle(prev.title)}</span>
+      </a>
+    ) : <span></span>}
+    {next ? (
+      <a
+        href={href(`topics/${next.slug}/`)}
+        rel="next"
+        class="group rounded-xl border border-stone-200 px-4 py-3 text-right transition hover:border-accent-400 dark:border-stone-800 dark:hover:border-accent-600"
+      >
+        <span class="block text-xs uppercase tracking-wide text-stone-400 dark:text-stone-500">Next <span aria-hidden="true">→</span></span>
+        <span class="mt-0.5 block font-medium group-hover:underline">{shortTitle(next.title)}</span>
+      </a>
+    ) : <span></span>}
+  </nav>
+
+  {/* Passage-level bookmarking. A single bookmark is stored; clicking a passage's
+      icon makes it the bookmark (or clears it if it already is). */}
+  <script is:inline>
+    (() => {
+      const list = document.getElementById('passages');
+      if (!list) return;
+      const KEY = 'jcs-bookmark';
+      const topicTitle = list.getAttribute('data-topic-title') || '';
+      const path = location.pathname;
+      const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
+      const buttons = Array.from(list.querySelectorAll('[data-bm]'));
+
+      const urlFor = (btn) => path + '#' + btn.closest('section').id;
+      const paint = () => {
+        const cur = read();
+        for (const btn of buttons) {
+          const on = !!cur && cur.url === urlFor(btn);
+          btn.classList.toggle('text-accent-700', on);
+          btn.classList.toggle('dark:text-accent-400', on);
+          btn.classList.toggle('text-stone-400', !on);
+          btn.querySelector('[data-bm-on]').classList.toggle('hidden', !on);
+          btn.querySelector('[data-bm-off]').classList.toggle('hidden', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+      };
+
+      for (const btn of buttons) {
+        btn.addEventListener('click', () => {
+          const section = btn.closest('section');
+          const url = urlFor(btn);
+          const cur = read();
+          try {
+            if (cur && cur.url === url) {
+              localStorage.removeItem(KEY);
+            } else {
+              localStorage.setItem(KEY, JSON.stringify({
+                url,
+                title: topicTitle,
+                ref: section.getAttribute('data-ref'),
+                savedAt: Date.now(),
+              }));
+            }
+          } catch {}
+          paint();
+          window.dispatchEvent(new Event('jcs-bookmark-changed'));
+        });
+      }
+      paint();
+    })();
+  </script>
 </Layout>

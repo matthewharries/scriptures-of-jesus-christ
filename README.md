@@ -51,4 +51,8 @@ The workflow in `.github/workflows/deploy.yml` builds and publishes on every pus
 ## Reading features
 
 Dark / light mode, adjustable font size, and a serif / sans-serif toggle (all persisted
-in `localStorage`), plus a topic filter on the home page.
+in `localStorage`), plus a topic filter on the home page. The Topical Guide catchphrase is
+italicized inline within each verse (its emphasized key word in bold), and every reference
+heading links straight to that passage on churchofjesuschrist.org. A single **bookmark**
+remembers your spot — tap the bookmark icon on any passage, then **Resume** (in the header
+or on the home page) to jump back.

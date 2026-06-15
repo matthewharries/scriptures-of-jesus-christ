@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#0c0a09"/>
-  <path d="M16 5v22M9 12h14" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+  <rect width="32" height="32" rx="7" fill="#0f172a"/>
+  <!-- rock mound of the tomb -->
+  <path d="M3 27 Q3 11 15 11 Q27 11 27 27 Z" fill="#64748b"/>
+  <!-- open, empty entrance -->
+  <path d="M9.5 27 V18.5 a5.5 5.5 0 0 1 11 0 V27 Z" fill="#0f172a"/>
+  <!-- stone rolled away to the side -->
+  <circle cx="25.5" cy="22.5" r="4.6" fill="#3b82f6" stroke="#0f172a" stroke-width="1.4"/>
+  <!-- ground line -->
+  <rect x="2.5" y="26.4" width="27" height="2.2" rx="1.1" fill="#64748b"/>
 </svg>

@@ -2,10 +2,11 @@
 
 export interface Verse {
   num: string;
-  text: string | null;
+  // Verse text as safe HTML: catchphrase fragments in <em>, key words in <strong>.
+  html: string | null;
 }
 
-export interface Group {
+export interface Passage {
   reference: string;
   volume: string;
   bookSlug: string;
@@ -13,6 +14,7 @@ export interface Group {
   churchUrl: string;
   verses: Verse[];
   chapterOnly: boolean;
+  fromSeeAlso: boolean;
 }
 
 export interface SeeAlso {
@@ -26,7 +28,7 @@ export interface Topic {
   slug: string;
   title: string;
   refCount: number;
-  groups: Group[];
+  passages: Passage[];
   seeAlso?: SeeAlso;
 }
 

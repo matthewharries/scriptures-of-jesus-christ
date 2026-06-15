@@ -25,23 +25,35 @@ The key idea is a **build-time data pipeline** feeding a **static site**; the tw
 decoupled by a committed JSON file.
 
 - **`scripts/build-data.ts`** — fetches each Topical Guide topic from the church content
-  API (`/study/api/v3/language-pages/type/content?uri=/scriptures/tg/<slug>`), parses the
-  `content.body` HTML for scripture reference links, resolves each reference to full verse
-  text from the bcbooks reference editions, groups consecutive verses by chapter, and
-  writes **`src/data/topics.json`**. Responses + downloads are cached in `.cache/`.
+  API (`/study/api/v3/language-pages/type/content?uri=/scriptures/tg/<slug>`) and parses
+  `content.body` into one **passage per scripture reference**. Each passage uses the
+  verse-anchored church href verbatim (e.g. `…?id=p2#p2`) and the full verse text from the
+  bcbooks reference editions, stored as `verses[].html`. The TG catchphrase (from
+  `<p class="entry">`) is **located inline within the verse text**: it's split into word
+  segments on its ellipses, matched token-by-token against the verse (case-insensitive,
+  punctuation-agnostic, in order with gaps), and the matched fragments are wrapped in `<em>`
+  with `key-word` emphases in `<strong>`. Unmatched segments (e.g. secondary refs that
+  share a catchphrase) just stay plain. Refs in the "See also" footer (`ul.reference`)
+  get `fromSeeAlso: true`. Output → **`src/data/topics.json`**; downloads cached in `.cache/`.
 - **`scripts/book-map.ts`** — maps church URL volume/book slugs (e.g. `ot`/`ex`) to the
   bcbooks JSON book-name keys (e.g. `Exodus`). Gotchas encoded here: OT uses
   `"Solomon's Song"`, D&C is keyed by **section number directly** (`data[section][verse]`,
   not by a book name), and PoGP names use em-dashes (`Joseph Smith—Matthew`).
 - **`src/data/topics.json`** — the committed dataset the site renders. The site makes no
   runtime network calls. Re-run `npm run build-data` to refresh it.
-- **Pages**: `src/pages/index.astro` (topic list + client-side filter) and
-  `src/pages/topics/[slug].astro` (`getStaticPaths` from `topics.json`). Redirect-only TG
-  entries ("See …") carry a `seeAlso` field instead of `groups`.
-- **`src/components/Layout.astro`** holds the reading-preference logic (dark mode, font
-  size, serif/sans) as inline scripts: one in `<head>` applies saved prefs before paint
-  (avoids FOUC), one at end of `<body>` wires the controls. State lives in `localStorage`
-  under `jcs-*` keys and is applied via CSS variables in `src/styles/global.css`.
+- **Pages**: `src/pages/index.astro` (topic list + client-side filter + resume card) and
+  `src/pages/topics/[slug].astro` (`getStaticPaths` from `topics.json`; renders passages,
+  with `fromSeeAlso` ones under a "See also" heading). Redirect-only TG entries ("See …")
+  carry a `seeAlso` field and no passages.
+- **`src/components/Layout.astro`** holds the inline scripts for reading prefs (dark mode,
+  font size, serif/sans — one `<head>` script applies them before paint to avoid FOUC, one
+  at `</body>` wires the controls) and for the header "Resume" link. State lives in
+  `localStorage` under `jcs-*` keys, applied via CSS variables in `src/styles/global.css`.
+- **Bookmark**: a single reading bookmark stored at `localStorage['jcs-bookmark']`
+  (`{url, title, ref, savedAt}`). Each passage `<section>` (`id="p-N"` + `data-ref`) has a
+  bookmark toggle button; clicking makes that passage the bookmark or clears it if it
+  already is. The header Resume link and the index resume card read it back. Changes
+  broadcast a `jcs-bookmark-changed` event so the header updates without a reload.
 
 ## Conventions that matter
 
