@@ -344,14 +344,28 @@ function parseTopic(
     if (!isVolume(volume)) continue;
     const bookSlug = m[2];
     const chapter = decodeURIComponent(m[3]);
-    const reference = a.text.replace(/\s+/g, ' ').trim();
+    const label = a.text.replace(/\s+/g, ' ').trim();
 
     if (volume !== 'dc-testament' && !BOOK_NAMES[volume][bookSlug]) {
       unmappedSlugs.add(`${volume}/${bookSlug}`);
     }
 
+    // Build the display reference from the href (full book name + chapter + verses)
+    // rather than the TG's abbreviated link text. This both spells books out in
+    // full and gives continuation refs (e.g. "32:3") their book prefix. D&C stays
+    // short. The verse list keeps the TG's nice ranges/commas from the label.
+    const displayBook = volume === 'dc-testament' ? 'D&C' : BOOK_NAMES[volume][bookSlug] ?? bookSlug;
+    const colon = label.lastIndexOf(':');
+    const verseDisplay =
+      colon !== -1
+        ? label.slice(colon + 1).trim()
+        : /[?&]id=p/.test(href)
+          ? label.replace(/^[^0-9]*/, '').trim() // bare verse continuation, e.g. "6"
+          : ''; // whole-chapter reference
+    const reference = `${displayBook} ${chapter}${verseDisplay ? ':' + verseDisplay : ''}`;
+
     const entry = closestEntry(a);
-    let verseNums = versesFromLabel(reference);
+    let verseNums = versesFromLabel(label);
     if (verseNums.length === 0) verseNums = versesFromHref(href);
     const versesText: VerseText[] = verseNums.map((num) => ({
       num,
