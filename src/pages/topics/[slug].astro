@@ -169,6 +169,64 @@ const verseCount = topic.passages.reduce((n, p) => n + p.verses.length, 0);
         });
       }
       paint();
+
+      // One-time onboarding hints, shown in sequence (each once, ever): first the
+      // bookmark icon, then the passage heading link.
+      const seen = (k) => { try { return !!localStorage.getItem(k); } catch { return true; } };
+      const showHint = (target, html, key, after) => {
+        const tip = document.createElement('div');
+        tip.className = 'fixed z-30 max-w-[16rem] cursor-pointer rounded-lg bg-stone-900 px-3.5 py-2.5 text-base text-stone-50 shadow-lg dark:bg-stone-100 dark:text-stone-900';
+        tip.setAttribute('role', 'status');
+        tip.innerHTML = html + ' <span class="mt-1.5 block text-sm underline opacity-80">Got it</span>';
+        const arrow = document.createElement('div');
+        arrow.className = 'fixed z-30 h-2.5 w-2.5 rotate-45 bg-stone-900 dark:bg-stone-100';
+        document.body.append(tip, arrow);
+
+        const place = () => {
+          const r = target.getBoundingClientRect();
+          const w = tip.offsetWidth;
+          tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+          tip.style.top = r.bottom + 10 + 'px';
+          arrow.style.left = r.left + r.width / 2 - 5 + 'px';
+          arrow.style.top = r.bottom + 5 + 'px';
+        };
+        place();
+
+        let raf = false;
+        const onScroll = () => {
+          if (raf) return;
+          raf = true;
+          requestAnimationFrame(() => { place(); raf = false; });
+        };
+        let done = false;
+        const dismiss = () => {
+          if (done) return;
+          done = true;
+          try { localStorage.setItem(key, '1'); } catch {}
+          tip.remove();
+          arrow.remove();
+          removeEventListener('scroll', onScroll);
+          removeEventListener('resize', place);
+          if (after) after();
+        };
+        addEventListener('scroll', onScroll, { passive: true });
+        addEventListener('resize', place);
+        tip.addEventListener('click', dismiss);
+        target.addEventListener('click', dismiss, { once: true });
+        setTimeout(dismiss, 12000);
+      };
+
+      const firstLink = list.querySelector('section h3 a');
+      const linkHint = () => {
+        if (!seen('jcs-link-hint-seen') && firstLink) {
+          showHint(firstLink, 'Tap a reference to open the full passage.', 'jcs-link-hint-seen');
+        }
+      };
+      if (buttons.length && !seen('jcs-bm-hint-seen')) {
+        showHint(buttons[0], 'Tap to save your place — pick it back up any time with <strong>Resume</strong> at the top.', 'jcs-bm-hint-seen', linkHint);
+      } else {
+        linkHint();
+      }
     })();
   </script>
 </Layout>
