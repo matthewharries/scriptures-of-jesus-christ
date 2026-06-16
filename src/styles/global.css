@@ -51,6 +51,18 @@ body {
   font-weight: 700;
 }
 
+/* Long-passage disclosure: hide the native marker and swap summary labels. */
+.passage-summary {
+  list-style: none;
+}
+.passage-summary::-webkit-details-marker {
+  display: none;
+}
+details.passage[open] > .passage-summary .det-closed,
+details.passage:not([open]) > .passage-summary .det-open {
+  display: none;
+}
+
 /* Respect users who prefer reduced motion. */
 @media (prefers-reduced-motion: reduce) {
   html {

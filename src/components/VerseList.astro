@@ -1,0 +1,24 @@
+---
+import type { Verse } from '../lib/types';
+
+interface Props {
+  verses: Verse[];
+  churchUrl: string;
+  class?: string;
+}
+const { verses, churchUrl, class: className = '' } = Astro.props;
+---
+<ol class:list={['reading space-y-2', className]}>
+  {verses.map((v) => (
+    <li class="flex gap-2.5">
+      <span class="mt-0.5 shrink-0 select-none text-xs font-semibold text-accent-700/80 tabular-nums dark:text-accent-400/80">{v.num}</span>
+      {v.html ? (
+        <span set:html={v.html} />
+      ) : (
+        <em class="text-stone-500 dark:text-stone-400">
+          (text unavailable — <a class="underline" href={churchUrl} target="_blank" rel="noopener">read on churchofjesuschrist.org</a>)
+        </em>
+      )}
+    </li>
+  ))}
+</ol>

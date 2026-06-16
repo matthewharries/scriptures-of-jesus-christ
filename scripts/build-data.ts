@@ -119,12 +119,15 @@ async function fetchTgPage(slug: string): Promise<{ body: string; title: string 
 }
 
 /**
- * Discover every "Jesus Christ, ..." subtopic. The slugs live in the full
- * Topical Guide index; titles come from each subtopic page's meta.title.
+ * Discover the main "Jesus Christ" entry plus every "Jesus Christ, ..." subtopic.
+ * The slugs live in the full Topical Guide index; titles come from each page's
+ * meta.title. The main `jesus-christ` entry (chronological life of Christ) is
+ * included explicitly since its slug has no subtopic suffix.
  */
 async function discoverSubtopics(): Promise<{ slug: string; title: string }[]> {
   const { body } = await fetchTgPage('');
   const slugs = [
+    'jesus-christ',
     ...new Set(
       [...body.matchAll(/\/scriptures\/tg\/(jesus-christ-[a-z0-9-]+)/g)].map((m) => m[1]),
     ),
@@ -356,13 +359,16 @@ function parseTopic(
     // short. The verse list keeps the TG's nice ranges/commas from the label.
     const displayBook = volume === 'dc-testament' ? 'D&C' : BOOK_NAMES[volume][bookSlug] ?? bookSlug;
     const colon = label.lastIndexOf(':');
+    // A whole-chapter range (no colon), e.g. "Matt. 5–7" or "chaps. 11–26".
+    const chapterRange = colon === -1 ? label.match(/(\d+)\s*[–—‒-]\s*(\d+)\s*$/) : null;
     const verseDisplay =
       colon !== -1
         ? label.slice(colon + 1).trim()
         : /[?&]id=p/.test(href)
           ? label.replace(/^[^0-9]*/, '').trim() // bare verse continuation, e.g. "6"
           : ''; // whole-chapter reference
-    const reference = `${displayBook} ${chapter}${verseDisplay ? ':' + verseDisplay : ''}`;
+    const chapterDisplay = chapterRange ? `${chapterRange[1]}–${chapterRange[2]}` : chapter;
+    const reference = `${displayBook} ${chapterDisplay}${verseDisplay ? ':' + verseDisplay : ''}`;
 
     const entry = closestEntry(a);
     let verseNums = versesFromLabel(label);
